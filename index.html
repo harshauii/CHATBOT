@@ -1,156 +1,345 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-    <!-- Keep existing head content unchanged -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Medical Assistant | Real-time Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
     <style>
-        /* Add new empty state styles */
+        @keyframes pulse-glow {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        .pulse-glow {
+            animation: pulse-glow 2s infinite;
+        }
+        .medication-card {
+            background: linear-gradient(145deg, rgba(76, 81, 109, 0.2), rgba(32, 32, 35, 0.2));
+            backdrop-filter: blur(8px);
+        }
         .empty-state {
             @apply text-gray-400 text-center py-4 text-sm;
         }
-        .empty-state i {
-            @apply text-2xl mb-2 opacity-50;
-        }
     </style>
 </head>
-<body>
-    <!-- Keep all existing body content until the script section -->
+<body class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-gray-300 font-sans">
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // ... [keep all existing element definitions and setup code]
+<div class="container mx-auto p-6 max-w-7xl">
+    <!-- Header Section -->
+    <header class="text-center mb-12 space-y-4">
+        <div class="inline-flex items-center gap-4 bg-gray-800/50 px-8 py-4 rounded-2xl border border-purple-500/30 pulse-glow">
+            <i class="fas fa-stethoscope text-4xl text-purple-400"></i>
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                AI Medical Assistant
+            </h1>
+        </div>
+        <p class="text-gray-400 max-w-2xl mx-auto">Advanced medical image analysis with real-time treatment recommendations powered by AI</p>
+    </header>
 
-            // Modified formatRecommendations function with empty states
-            function formatRecommendations(recommendations) {
-                let html = '<div class="space-y-6">';
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        
+        <!-- Image Upload Section -->
+        <div class="group bg-gray-800/30 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-dashed border-purple-500/30 hover:border-purple-500/50 transition-all duration-300">
+            <h2 class="text-xl font-semibold text-purple-400 mb-4 flex items-center gap-2">
+                <i class="fas fa-file-medical"></i> Medical Image Upload
+            </h2>
+            
+            <div id="drop-zone" class="relative min-h-[200px] flex flex-col items-center justify-center gap-4 p-6 rounded-xl bg-gray-900/50 border-2 border-dashed border-gray-700 hover:border-purple-500 cursor-pointer transition-all">
+                <input type="file" id="image-upload" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div class="text-center space-y-4">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-purple-500 opacity-70 group-hover:opacity-100 transition-opacity"></i>
+                    <div>
+                        <p class="font-medium">Drag & Drop Medical Scan</p>
+                        <p class="text-sm text-gray-400 mt-1">Supported formats: JPEG, PNG (Max 10MB)</p>
+                    </div>
+                    <button class="px-6 py-2 bg-purple-600/30 hover:bg-purple-500/40 text-purple-100 rounded-full transition-colors">
+                        Browse Files
+                    </button>
+                </div>
+            </div>
 
-                // Medications Section
-                html += `<div class="medication-card p-4 rounded-xl border border-amber-500/20">
-                    <h3 class="text-lg font-semibold text-amber-400 mb-3">💊 Recommended Medications</h3>`;
+            <!-- Image Preview -->
+            <div id="image-container" class="hidden mt-6 relative group">
+                <div class="relative rounded-xl overflow-hidden shadow-lg border-2 border-gray-700 hover:border-purple-500 transition-colors">
+                    <img id="display-image" src="" alt="Medical scan preview" 
+                         class="w-full h-64 object-contain bg-gray-900 cursor-zoom-in" />
+                    <div class="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent"></div>
+                    <button id="remove-image" class="absolute top-2 right-2 p-2 bg-red-500/90 rounded-full hover:bg-red-400 transition-colors shadow-lg">
+                        <i class="fas fa-times text-white text-sm"></i>
+                    </button>
+                </div>
+                <p class="text-sm text-gray-400 mt-2 text-center">Image preview - Click to zoom</p>
+            </div>
+        </div>
+
+        <!-- Analysis Controls -->
+        <div class="space-y-8">
+            <!-- Query Input -->
+            <div class="bg-gray-800/30 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-blue-500/30">
+                <h2 class="text-xl font-semibold text-blue-400 mb-4 flex items-center gap-2">
+                    <i class="fas fa-comment-medical"></i> Clinical Inquiry
+                </h2>
                 
-                if (recommendations.medications?.length > 0) {
-                    html += `<div class="space-y-4">${recommendations.medications.map(med => `
-                        <div class="bg-gray-900/30 p-3 rounded-lg">
-                            <div class="font-medium">${med.name}</div>
-                            ${med.dosage ? `<div class="text-sm text-amber-300">${med.dosage}</div>` : ''}
-                            ${med.purpose ? `<div class="text-sm text-gray-400 mt-1">${med.purpose}</div>` : ''}
-                        </div>`).join('')}
-                    </div>`;
-                } else {
-                    html += `<div class="empty-state">
-                        <i class="fas fa-pills"></i>
-                        <p>No medication recommendations available</p>
-                    </div>`;
-                }
-                html += '</div>'; // Close medications section
+                <div class="relative">
+                    <textarea id="query-input" rows="4" 
+                        placeholder="Example questions:
+- Describe abnormalities in this X-ray
+- Identify potential pathologies
+- Compare with previous scan
+- Assess tumor progression markers"
+                        class="w-full p-4 bg-gray-900/50 text-gray-300 rounded-xl shadow-sm border border-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 transition-all resize-none 
+                               scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900"></textarea>
+                    <div class="absolute bottom-2 right-2 text-sm text-gray-400 bg-gray-800/50 px-2 py-1 rounded">
+                        <span id="char-count">0</span>/500
+                    </div>
+                </div>
 
-                // Treatment Plan Section
-                html += `<div class="bg-green-900/10 p-4 rounded-xl border border-green-500/20">
-                    <h3 class="text-lg font-semibold text-green-400 mb-3">🏥 Treatment Plan</h3>`;
-                if (recommendations.treatments?.length > 0) {
-                    html += `<ul class="list-disc pl-6 space-y-2">
-                        ${recommendations.treatments.map(t => `<li>${t}</li>`).join('')}
-                    </ul>`;
-                } else {
-                    html += `<div class="empty-state">
-                        <i class="fas fa-procedures"></i>
-                        <p>No treatment recommendations available</p>
-                    </div>`;
-                }
-                html += '</div>';
+                <button id="submit-query" 
+                    class="w-full mt-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 text-white font-semibold py-3 px-6 rounded-xl transition-all 
+                           flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-microscope"></i>
+                    <span>Analyze & Recommend</span>
+                </button>
+            </div>
 
-                // Precautions Section
-                html += `<div class="bg-red-900/10 p-4 rounded-xl border border-red-500/20">
-                    <h3 class="text-lg font-semibold text-red-400 mb-3">⚠️ Important Precautions</h3>`;
-                if (recommendations.precautions?.length > 0) {
-                    html += `<ul class="list-disc pl-6 space-y-2">
-                        ${recommendations.precautions.map(p => `<li>${p}</li>`).join('')}
-                    </ul>`;
-                } else {
-                    html += `<div class="empty-state">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>No specific precautions identified</p>
-                    </div>`;
-                }
-                html += '</div>';
+            <!-- Safety Notice -->
+            <div class="bg-amber-900/20 border border-amber-700/30 p-4 rounded-xl text-sm text-amber-200">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-exclamation-triangle text-lg mt-1"></i>
+                    <div>
+                        <p class="font-medium">Important Notice:</p>
+                        <p class="mt-1">This AI analysis should not replace professional medical advice. Always consult a qualified healthcare provider.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                // Follow-up Section
-                html += `<div class="bg-blue-900/10 p-4 rounded-xl border border-blue-500/20">
-                    <h3 class="text-lg font-semibold text-blue-400 mb-3">📅 Follow-up Protocol</h3>`;
-                if (recommendations.follow_up?.length > 0) {
-                    html += `<ul class="list-disc pl-6 space-y-2">
-                        ${recommendations.follow_up.map(f => `<li>${f}</li>`).join('')}
-                    </ul>`;
-                } else {
-                    html += `<div class="empty-state">
-                        <i class="fas fa-calendar-check"></i>
-                        <p>No follow-up recommendations available</p>
-                    </div>`;
-                }
-                html += '</div>';
+    <!-- Results Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Analysis Results -->
+        <div class="response-card bg-gray-800/30 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-green-500/30">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-green-500/20 p-2 rounded-lg">
+                    <i class="fas fa-dna text-2xl text-green-400"></i>
+                </div>
+                <h2 class="text-xl font-semibold text-green-400">Radiological Analysis</h2>
+            </div>
+            <div id="analysis-container" class="prose prose-invert max-w-none space-y-4">
+                <div class="text-gray-400 text-center py-4" id="default-analysis-text">
+                    AI analysis results will appear here...
+                </div>
+            </div>
+            <div id="analysis-loading" class="hidden text-center py-4 space-y-2">
+                <i class="fas fa-atom fa-spin text-2xl text-green-400"></i>
+                <p class="text-gray-400 text-sm mt-2">Analyzing anatomical structures<br>and potential pathologies...</p>
+            </div>
+        </div>
 
-                html += '</div>'; // Close main container
-                return html;
+        <!-- Recommendations -->
+        <div class="response-card bg-gray-800/30 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-amber-500/30">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-amber-500/20 p-2 rounded-lg">
+                    <i class="fas fa-prescription-bottle-alt text-2xl text-amber-400"></i>
+                </div>
+                <h2 class="text-xl font-semibold text-amber-400">Treatment Recommendations</h2>
+            </div>
+            <div id="recommendation-container" class="prose prose-invert max-w-none space-y-4">
+                <div class="text-gray-400 text-center py-4" id="default-recommendation-text">
+                    Personalized treatment recommendations<br>will appear here...
+                </div>
+            </div>
+            <div id="recommendation-loading" class="hidden text-center py-4 space-y-2">
+                <i class="fas fa-capsules fa-spin text-2xl text-amber-400"></i>
+                <p class="text-gray-400 text-sm mt-2">Generating recommendations<br>using medical guidelines...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Notification -->
+    <div id="error-toast" class="fixed top-4 right-4 w-80 bg-red-600/90 text-white p-4 rounded-xl shadow-2xl transform translate-x-[120%] transition-transform backdrop-blur-sm">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-exclamation-circle"></i>
+            <p id="error-text" class="flex-1 text-sm"></p>
+            <button id="close-error" class="hover:opacity-70 transition-opacity">✕</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Element references
+        const elements = {
+            upload: document.getElementById('image-upload'),
+            dropZone: document.getElementById('drop-zone'),
+            imageContainer: document.getElementById('image-container'),
+            displayImage: document.getElementById('display-image'),
+            removeImage: document.getElementById('remove-image'),
+            queryInput: document.getElementById('query-input'),
+            submitBtn: document.getElementById('submit-query'),
+            analysisContainer: document.getElementById('analysis-container'),
+            recommendationContainer: document.getElementById('recommendation-container'),
+            errorToast: document.getElementById('error-toast')
+        };
+
+        // Event Listeners
+        elements.queryInput.addEventListener('input', updateCharCount);
+        elements.dropZone.addEventListener('dragover', handleDrag);
+        elements.dropZone.addEventListener('dragleave', handleDrag);
+        elements.dropZone.addEventListener('drop', handleFileDrop);
+        elements.upload.addEventListener('change', handleFileSelect);
+        elements.removeImage.addEventListener('click', removeImage);
+        elements.submitBtn.addEventListener('click', submitAnalysis);
+        document.getElementById('close-error').addEventListener('click', hideError);
+
+        // Initialize character counter
+        function updateCharCount() {
+            const count = elements.queryInput.value.length;
+            document.getElementById('char-count').textContent = count;
+            elements.queryInput.classList.toggle('border-red-500', count > 500);
+            elements.submitBtn.disabled = count > 500 || count === 0;
+        }
+
+        // Drag and drop handlers
+        function handleDrag(e) {
+            e.preventDefault();
+            elements.dropZone.classList.toggle('border-purple-500', e.type === 'dragover');
+            elements.dropZone.classList.toggle('bg-gray-900/70', e.type === 'dragover');
+        }
+
+        function handleFileDrop(e) {
+            e.preventDefault();
+            handleDrag(e);
+            if (e.dataTransfer.files[0]) handleImageUpload(e.dataTransfer.files[0]);
+        }
+
+        function handleFileSelect(e) {
+            if (e.target.files[0]) handleImageUpload(e.target.files[0]);
+        }
+
+        // Image handling
+        function handleImageUpload(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please upload a valid image file (JPEG/PNG)');
+                return;
             }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                elements.displayImage.src = e.target.result;
+                elements.imageContainer.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
 
-            // Modified API handler with better error reporting
-            elements.submitBtn.addEventListener('click', async () => {
-                try {
-                    // Clear previous results
-                    elements.analysisContainer.innerHTML = '';
-                    elements.recommendationContainer.innerHTML = '';
-                    
-                    // Validate inputs
-                    if (!elements.upload.files[0] || !elements.queryInput.value.trim()) {
-                        throw new Error('Please upload an image and enter a query');
-                    }
+        function removeImage() {
+            elements.imageContainer.classList.add('hidden');
+            elements.upload.value = '';
+        }
 
-                    // Show loading states
-                    elements.analysisLoading.classList.remove('hidden');
-                    elements.recommendationLoading.classList.remove('hidden');
+        // API handling
+        async function submitAnalysis() {
+            try {
+                // Clear previous results
+                elements.analysisContainer.innerHTML = '';
+                elements.recommendationContainer.innerHTML = '';
+                
+                // Validate inputs
+                if (!elements.upload.files[0]) throw new Error('Please upload a medical image');
+                if (elements.queryInput.value.trim().length === 0) throw new Error('Please enter a clinical question');
 
-                    const formData = new FormData();
-                    formData.append('image', elements.upload.files[0]);
-                    formData.append('query', elements.queryInput.value);
+                // Show loading states
+                document.getElementById('analysis-loading').classList.remove('hidden');
+                document.getElementById('recommendation-loading').classList.remove('hidden');
 
-                    const response = await fetch('/upload_and_query', {
-                        method: 'POST',
-                        body: formData
-                    });
+                const formData = new FormData();
+                formData.append('image', elements.upload.files[0]);
+                formData.append('query', elements.queryInput.value);
 
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.error || 'Analysis failed');
+                const response = await fetch('/upload_and_query', {
+                    method: 'POST',
+                    body: formData
+                });
 
-                    // Display analysis
-                    elements.analysisLoading.classList.add('hidden');
-                    elements.analysisContainer.innerHTML = marked.parse(data.analysis);
-                    
-                    // Display recommendations with fallback
-                    elements.recommendationLoading.classList.add('hidden');
-                    const safeRecommendations = {
-                        medications: data.recommendations?.medications || [],
-                        treatments: data.recommendations?.treatments || [],
-                        precautions: data.recommendations?.precautions || [],
-                        follow_up: data.recommendations?.follow_up || []
-                    };
-                    elements.recommendationContainer.innerHTML = formatRecommendations(safeRecommendations);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || 'Analysis failed');
 
-                } catch (error) {
-                    showError(error.message);
-                    // Restore default messages if needed
-                    if (!elements.analysisContainer.innerHTML) {
-                        elements.analysisContainer.innerHTML = 
-                            '<div class="text-gray-400 text-center py-4">Analysis failed - please try again</div>';
-                    }
-                    elements.recommendationContainer.innerHTML = 
-                        '<div class="text-gray-400 text-center py-4">Recommendations unavailable - check analysis results</div>';
-                } finally {
-                    elements.analysisLoading.classList.add('hidden');
-                    elements.recommendationLoading.classList.add('hidden');
-                }
-            });
+                // Display results
+                elements.analysisContainer.innerHTML = marked.parse(data.analysis);
+                elements.recommendationContainer.innerHTML = formatRecommendations(data.recommendations);
 
-            // Keep existing showError function and other utilities
-        });
-    </script>
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('analysis-loading').classList.add('hidden');
+                document.getElementById('recommendation-loading').classList.add('hidden');
+            }
+        }
+
+        // Format recommendations
+        function formatRecommendations(recommendations) {
+            return `
+            <div class="space-y-6">
+                <div class="medication-card p-4 rounded-xl border border-amber-500/20">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-3">💊 Medications</h3>
+                    ${recommendations.medications?.length ? `
+                        <div class="space-y-4">
+                            ${recommendations.medications.map(med => `
+                                <div class="bg-gray-900/30 p-3 rounded-lg">
+                                    <div class="font-medium">${med.name}</div>
+                                    ${med.dosage ? `<div class="text-sm text-amber-300">${med.dosage}</div>` : ''}
+                                    ${med.purpose ? `<div class="text-sm text-gray-400 mt-1">${med.purpose}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `<div class="empty-state">
+                            <i class="fas fa-pills"></i>
+                            <p>No medication recommendations available</p>
+                         </div>`}
+                </div>
+
+                ${['treatments', 'precautions', 'follow_up'].map(section => `
+                    <div class="p-4 rounded-xl border border-${section === 'treatments' ? 'green' : section === 'precautions' ? 'red' : 'blue'}-500/20">
+                        <h3 class="text-lg font-semibold text-${section === 'treatments' ? 'green' : section === 'precautions' ? 'red' : 'blue'}-400 mb-3">
+                            ${section === 'treatments' ? '🏥 Treatment Plan' : section === 'precautions' ? '⚠️ Precautions' : '📅 Follow-up'}
+                        </h3>
+                        ${recommendations[section]?.length ? `
+                            <ul class="list-disc pl-6 space-y-2">
+                                ${recommendations[section].map(item => `<li>${item}</li>`).join('')}
+                            </ul>
+                        ` : `<div class="empty-state">
+                                <i class="fas ${section === 'treatments' ? 'fa-procedures' : section === 'precautions' ? 'fa-exclamation-triangle' : 'fa-calendar-check'}"></i>
+                                <p>No ${section} recommendations available</p>
+                             </div>`}
+                    </div>
+                `).join('')}
+            </div>`;
+        }
+
+        // Error handling
+        function showError(message) {
+            document.getElementById('error-text').textContent = message;
+            elements.errorToast.classList.remove('translate-x-[120%]');
+            setTimeout(hideError, 5000);
+        }
+
+        function hideError() {
+            elements.errorToast.classList.add('translate-x-[120%]');
+        }
+    });
+</script>
+
 </body>
 </html>
