@@ -21,12 +21,13 @@ load_dotenv()
 # Initialize FastAPI
 app = FastAPI()
 
-# Configure templates with absolute path
+# Configure templates with corrected path
 current_dir = Path(__file__).parent
-templates = Jinja2Templates(directory=current_dir / "templates")
+template_dir = current_dir / "correct/path/to"
+templates = Jinja2Templates(directory=template_dir)
 
 # Verify template existence on startup
-template_path = current_dir / "templates" / "index.html"
+template_path = template_dir / "index.html"
 if not template_path.exists():
     raise RuntimeError(f"Template not found at {template_path}")
 
