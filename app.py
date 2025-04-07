@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form, Request, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, Request, HTTPException 
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse
 from pathlib import Path
@@ -21,13 +21,12 @@ load_dotenv()
 # Initialize FastAPI
 app = FastAPI()
 
-# Configure templates with corrected path
+# Set templates directory to current folder
 current_dir = Path(__file__).parent
-template_dir = current_dir / "correct/path/to"
-templates = Jinja2Templates(directory=template_dir)
+templates = Jinja2Templates(directory=str(current_dir))
 
-# Verify template existence on startup
-template_path = template_dir / "index.html"
+# Ensure index.html exists
+template_path = current_dir / "index.html"
 if not template_path.exists():
     raise RuntimeError(f"Template not found at {template_path}")
 
