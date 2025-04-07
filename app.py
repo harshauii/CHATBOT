@@ -60,13 +60,6 @@ def generate_recommendations(analysis_text: str) -> dict:
         "precautions": ["Important precaution 1", "Important precaution 2"],
         "follow_up": ["Follow-up action 1", "Follow-up action 2"]
     }}
-
-    Follow these guidelines:
-    1. Use only medications appropriate for the condition
-    2. Consider patient safety and contraindications
-    3. Include both immediate and long-term actions
-    4. Base recommendations on latest medical guidelines
-    5. Use realistic dosages and administration frequencies
     """
 
     try:
@@ -91,15 +84,22 @@ def generate_recommendations(analysis_text: str) -> dict:
 
         if response.status_code != 200:
             logger.error(f"Recommendation API error: {response.text}")
-            return {}
+            return {key: [] for key in ["medications", "treatments", "precautions", "follow_up"]}
 
         result = response.json()
-        recommendations = json.loads(result["choices"][0]["message"]["content"])
-        return recommendations
+
+        content = result["choices"][0]["message"]["content"]
+        try:
+            recommendations = json.loads(content)
+            required_keys = ["medications", "treatments", "precautions", "follow_up"]
+            return {key: recommendations.get(key, []) for key in required_keys}
+        except json.JSONDecodeError:
+            logger.error("Invalid JSON response from Groq API")
+            return {key: [] for key in ["medications", "treatments", "precautions", "follow_up"]}
 
     except Exception as e:
         logger.error(f"Recommendation generation failed: {str(e)}")
-        return {}
+        return {key: [] for key in ["medications", "treatments", "precautions", "follow_up"]}
 
 @app.post("/upload_and_query")
 async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)):
@@ -143,9 +143,14 @@ async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)
         # Process analysis
         analysis_result = analysis_response.json()
         analysis_text = analysis_result["choices"][0]["message"]["content"]
-        
-        # Generate recommendations
-        recommendations = generate_recommendations(analysis_text)
+
+        # Generate recommendations (with fallback)
+        recommendations = generate_recommendations(analysis_text) or {
+            "medications": [],
+            "treatments": [],
+            "precautions": [],
+            "follow_up": []
+        }
 
         return JSONResponse({
             "analysis": analysis_text,
