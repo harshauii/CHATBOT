@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 import os
 import logging
 import json
+import uvicorn  # Added for server running
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -59,7 +60,7 @@ async def get_openfda_medications(condition: str):
                 
                 medications.append({
                     "name": brand_name,
-                    "dosage": dosage.split('.')[0][:100],  # Truncate long text
+                    "dosage": dosage.split('.')[0][:100],
                     "purpose": purpose.split('.')[0][:100]
                 })
             except (KeyError, IndexError):
@@ -110,13 +111,13 @@ def generate_treatment_recommendations(analysis_text: str):
 @app.post("/upload_and_query")
 async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)):
     try:
-        # Image processing and analysis (same as before)
-        # ... [keep existing image analysis code]
-        
-        # Get medications from OpenFDA
+        # Placeholder for image analysis logic
+        # Replace this with actual model inference or analysis if needed
+        contents = await image.read()
+        img = Image.open(io.BytesIO(contents))
+        analysis_text = f"Analysis result for query: {query}"  # Dummy output for now
+
         medications = await get_openfda_medications(analysis_text)
-        
-        # Get other recommendations from Groq
         other_recommendations = generate_treatment_recommendations(analysis_text)
 
         return JSONResponse({
@@ -132,3 +133,8 @@ async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)
     except Exception as e:
         logger.error(f"Error: {str(e)}")
         raise HTTPException(500, detail="Processing error")
+
+# --- Main Entrypoint ---
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
