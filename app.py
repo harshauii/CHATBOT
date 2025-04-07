@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form, Request, HTTPException 
+from fastapi import FastAPI, File, UploadFile, Form, Request, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse
 from pathlib import Path
@@ -21,55 +21,49 @@ load_dotenv()
 # Initialize FastAPI
 app = FastAPI()
 
-# Set templates directory to current folder
+# Configure templates
 current_dir = Path(__file__).parent
 templates = Jinja2Templates(directory=str(current_dir))
 
-# Ensure index.html exists
-template_path = current_dir / "index.html"
-if not template_path.exists():
-    raise RuntimeError(f"Template not found at {template_path}")
-
-# Groq API configuration
+# API configuration
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-if not GROQ_API_KEY:
-    raise ValueError("GROQ_API_KEY is not set in the .env file")
+REQUIRED_KEYS = ["medications", "treatments", "precautions", "follow_up"]
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+def validate_recommendation_structure(data: dict) -> dict:
+    """Ensure valid recommendation structure with fallback values"""
+    return {
+        "medications": [m for m in data.get("medications", []) if all(k in m for k in ["name", "dosage", "purpose"])],
+        "treatments": data.get("treatments", []),
+        "precautions": data.get("precautions", []),
+        "follow_up": data.get("follow_up", [])
+    }
+
 def generate_recommendations(analysis_text: str) -> dict:
-    """Generate real-time medical recommendations using Groq API"""
-    recommendation_prompt = f"""
-    Analyze this radiology report and generate structured medical recommendations:
-    {analysis_text}
-
-    Provide recommendations in this exact JSON format:
-    {{
-        "medications": [
-            {{
-                "name": "Medication Name",
-                "dosage": "Dosage information",
-                "purpose": "Therapeutic purpose"
-            }}
-        ],
-        "treatments": ["Treatment option 1", "Treatment option 2"],
-        "precautions": ["Important precaution 1", "Important precaution 2"],
-        "follow_up": ["Follow-up action 1", "Follow-up action 2"]
-    }}
-    """
-
+    """Generate medical recommendations with enhanced validation"""
     try:
         response = requests.post(
             GROQ_API_URL,
             json={
                 "model": "llama-3-70b-8192",
                 "messages": [
-                    {"role": "system", "content": "You are a medical recommendation system. Generate structured treatment recommendations based on radiology findings."},
-                    {"role": "user", "content": recommendation_prompt}
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a medical recommendation system. "
+                            "Generate structured treatment recommendations based on radiology findings. "
+                            "Use valid JSON format with: medications (array of objects with name, dosage, purpose), "
+                            "treatments (array of strings), precautions (array of strings), follow_up (array of strings)"
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Radiology report: {analysis_text}\n\nGenerate recommendations in exact JSON format:"
+                    }
                 ],
                 "response_format": {"type": "json_object"},
                 "temperature": 0.3,
@@ -83,40 +77,41 @@ def generate_recommendations(analysis_text: str) -> dict:
         )
 
         if response.status_code != 200:
-            logger.error(f"Recommendation API error: {response.text}")
-            return {key: [] for key in ["medications", "treatments", "precautions", "follow_up"]}
+            logger.error(f"Groq API error: {response.text}")
+            return {key: [] for key in REQUIRED_KEYS}
 
         result = response.json()
-
         content = result["choices"][0]["message"]["content"]
+        
         try:
             recommendations = json.loads(content)
-            required_keys = ["medications", "treatments", "precautions", "follow_up"]
-            return {key: recommendations.get(key, []) for key in required_keys}
-        except json.JSONDecodeError:
-            logger.error("Invalid JSON response from Groq API")
-            return {key: [] for key in ["medications", "treatments", "precautions", "follow_up"]}
+            return validate_recommendation_structure(recommendations)
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.error(f"Invalid response format: {str(e)}")
+            return {key: [] for key in REQUIRED_KEYS}
 
     except Exception as e:
         logger.error(f"Recommendation generation failed: {str(e)}")
-        return {key: [] for key in ["medications", "treatments", "precautions", "follow_up"]}
+        return {key: [] for key in REQUIRED_KEYS}
 
 @app.post("/upload_and_query")
 async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)):
     try:
+        # Validate input
+        if not image.content_type.startswith("image/"):
+            raise HTTPException(400, detail="Invalid file type. Please upload an image")
+
         # Process image
         image_content = await image.read()
-        encoded_image = base64.b64encode(image_content).decode("utf-8")
-
-        # Verify image
+        
+        # Verify image validity
         try:
-            img = Image.open(io.BytesIO(image_content))
-            img.verify()
+            Image.open(io.BytesIO(image_content)).verify()
         except Exception as e:
             logger.error(f"Invalid image: {str(e)}")
-            raise HTTPException(400, detail="Invalid image format")
+            raise HTTPException(400, detail="Invalid or corrupted image file")
 
-        # Get initial analysis
+        # Get image analysis
         analysis_response = requests.post(
             GROQ_API_URL,
             json={
@@ -125,7 +120,9 @@ async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)
                     "role": "user",
                     "content": [
                         {"type": "text", "text": query},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
+                        {"type": "image_url", "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64.b64encode(image_content).decode('utf-8')}"
+                        }}
                     ]
                 }],
                 "max_tokens": 1000
@@ -138,19 +135,13 @@ async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)
         )
 
         if analysis_response.status_code != 200:
-            raise HTTPException(500, detail="Analysis failed")
+            raise HTTPException(502, detail="Image analysis service unavailable")
 
-        # Process analysis
         analysis_result = analysis_response.json()
         analysis_text = analysis_result["choices"][0]["message"]["content"]
 
-        # Generate recommendations (with fallback)
-        recommendations = generate_recommendations(analysis_text) or {
-            "medications": [],
-            "treatments": [],
-            "precautions": [],
-            "follow_up": []
-        }
+        # Generate recommendations with fallback
+        recommendations = generate_recommendations(analysis_text)
 
         return JSONResponse({
             "analysis": analysis_text,
@@ -161,7 +152,7 @@ async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)
         raise he
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(500, detail="Processing error")
+        raise HTTPException(500, detail="Internal server error")
 
 if __name__ == "__main__":
     import uvicorn
