@@ -1,6 +1,8 @@
 fastapi
 uvicorn
-Flask
 requests
-Pillow
+flask
+jinja2
+pillow
 python-dotenv
+python-multipart
